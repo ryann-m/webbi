@@ -14,11 +14,6 @@ right now?" every few seconds and lights up the answer on six 7-segment digits.
  Multiplexed 7-segment display  →  5 2 4 1 5
 ```
 
-This README teaches the project **from zero**. By the end you'll understand the physics
-(voltage, current, LEDs), the electronics (transistors, common-anode displays,
-multiplexing), the firmware (non-blocking refresh, WiFi, JSON), and the exact terminal
-commands to build and flash it. You can replicate Webbi even if you've never touched a
-breadboard.
 
 > Author: Ryann Mack · Built at the CyPhy Life lab
 
