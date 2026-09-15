@@ -1,0 +1,45 @@
+#include <Arduino.h>
+
+const int segA = 18;
+const int segB = 19;
+
+const int digit1 = 32;
+const int digit2 = 33;
+
+void setup() {
+
+  pinMode(segA, OUTPUT);
+  pinMode(segB, OUTPUT);
+
+  pinMode(digit1, OUTPUT);
+  pinMode(digit2, OUTPUT);
+
+  // Turn segments A and B ON
+  // This forms the number "1"
+
+  digitalWrite(segA, HIGH);
+  digitalWrite(segB, HIGH);
+}
+
+void loop() {
+
+  // =========================
+  // DISPLAY 1 ON
+  // DISPLAY 2 OFF
+  // =========================
+
+  digitalWrite(digit1, HIGH);
+  digitalWrite(digit2, LOW);
+
+  delay(1000);
+
+  // =========================
+  // DISPLAY 1 OFF
+  // DISPLAY 2 ON
+  // =========================
+
+  digitalWrite(digit1, LOW);
+  digitalWrite(digit2, HIGH);
+
+  delay(1000);
+}

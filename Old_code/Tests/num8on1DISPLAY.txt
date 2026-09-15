@@ -1,0 +1,49 @@
+#include <Arduino.h>
+
+const int segA = 18;
+const int segB = 19;
+const int segC = 21;
+const int segD = 22;
+const int segE = 23;
+const int segF = 25;
+const int segG = 26;
+
+const int digit1 = 32;
+
+void setup() {
+
+  pinMode(segA, OUTPUT);
+  pinMode(segB, OUTPUT);
+  pinMode(segC, OUTPUT);
+  pinMode(segD, OUTPUT);
+  pinMode(segE, OUTPUT);
+  pinMode(segF, OUTPUT);
+  pinMode(segG, OUTPUT);
+
+  pinMode(digit1, OUTPUT);
+
+  // Turn ALL segments OFF first
+
+  digitalWrite(segA, LOW);
+  digitalWrite(segB, LOW);
+  digitalWrite(segC, LOW);
+  digitalWrite(segD, LOW);
+  digitalWrite(segE, LOW);
+  digitalWrite(segF, LOW);
+  digitalWrite(segG, LOW);
+
+  // Turn display ON
+  digitalWrite(digit1, HIGH);
+
+  // Number 1 = B + C
+  digitalWrite(segA, HIGH);
+  digitalWrite(segB, HIGH);
+  digitalWrite(segC, HIGH);
+  digitalWrite(segD, HIGH);
+  digitalWrite(segE, HIGH);
+  digitalWrite(segF, HIGH);
+  digitalWrite(segG, HIGH);
+}
+
+void loop() {
+}

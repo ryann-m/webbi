@@ -1,0 +1,219 @@
+```cpp
+/*
+Author: Ryann Mack
+
+Date: January 30th, 2026
+
+Notes:
+- Common Anode (High On, Low off I think)
+
+Description:
+- Recieves the number from the request
+- (numbers function)Instantiates each number of 7 seg
+- Easy to display number from the "numbers function"
+- If after 30s number has changed, update. Otherwise wait another 30s
+*/
+
+// Libraries
+#include <Arduino.h>
+#include <stdlib.h>
+
+#include "CyphyNetworkStub.h" // ADDED: separate file placeholder for networking
+
+
+// Initialization
+    // Initialize segPins for each segment (A B C D E F G)
+    // Initialize digPins for each display (1 2 3 4 5 6)
+
+// Setup (change pin associations if needed)
+// Segment pins: A B C D E F G
+int segPins[7] = {18, 19, 21, 22, 23, 25, 26};
+
+// Digit pins: D1 D2 D3 D4 D5 D6
+int digitPins[6] = {4, 5, 12, 13, 14, 27};
+
+
+//HOW DO I PROPERLY SET THE STUFF UP AND HOW DO I PROPERLY INITIALIZE WITH ESP32:
+
+// TOS-11060BE-B:
+    // Common Anode
+    // 4v per segment (2x 2v Red Led's)
+
+// ADDED: we define these once so the whole project agrees on what "ON" means electrically.
+// Why: with common-anode displays, the logic is inverted compared to “normal LEDs”.
+// - A segment usually turns ON when its pin is driven LOW (the microcontroller sinks current).
+// - A digit (the common anode) often turns ON when its digit pin is driven HIGH (the microcontroller sources current).
+// If your wiring uses transistors/drivers, the digit enable can invert — these constants let you flip behavior in one place.
+static const uint8_t SEGMENT_ELECTRICALLY_ON  = LOW;
+static const uint8_t SEGMENT_ELECTRICALLY_OFF = HIGH;
+static const uint8_t DIGIT_ELECTRICALLY_ON   = HIGH;
+static const uint8_t DIGIT_ELECTRICALLY_OFF  = LOW;
+
+
+// Function that displays numbers on webbi
+//void createDigit(){
+    // Defines each digit based on the segments that light up to make it
+    // Should I make a function for each digit? Or can I do that in here?
+//}
+byte numbers[10][7] = {
+
+    // A B C D E F G
+    {0,0,0,0,0,0,1}, // 0
+    {1,0,0,1,1,1,1}, // 1
+    {0,0,1,0,0,1,0}, // 2
+    {0,0,0,0,1,1,0}, // 3
+    {1,0,0,1,1,0,0}, // 4
+    {0,1,0,0,1,0,0}, // 5
+    {0,1,0,0,0,0,0}, // 6
+    {0,0,0,1,1,1,1}, // 7
+    {0,0,0,0,0,0,0}, // 8
+    {0,0,0,0,1,0,0}  // 9
+};
+
+int displayDigit(int digitValue0to9) {
+    // Recieves a number n, and if the n matches a segment in position i, it outputs that segment
+    // to the position (123, for number 1, find which segments display that number based on the funcitons
+    // for creating numbers, (There has to be a match) and sets that as the new array of numbers to be displayed)
+
+    // Why constrain: protects the lookup table from bad values (like -1 or 12),
+    // which would otherwise read garbage memory and light random segments.
+    digitValue0to9 = constrain(digitValue0to9, 0, 9);
+
+    // Bigger picture: this writes the “shape” of one digit (0–9) onto the shared A–G segment wires.
+    // Important: this does NOT choose which of the 6 displays is active. That selection happens separately.
+    for (int segmentIndex = 0; segmentIndex < 7; segmentIndex++) {
+        // Our table uses 0 = "this segment should be ON" and 1 = "this segment should be OFF".
+        // For common anode we translate that into electrical signals using SEGMENT_ELECTRICALLY_ON/OFF.
+        digitalWrite(segPins[segmentIndex],
+                     numbers[digitValue0to9][segmentIndex] ? SEGMENT_ELECTRICALLY_OFF : SEGMENT_ELECTRICALLY_ON);
+    }
+
+    // Keeping your return type, but we don’t actually use the return value.
+    return 0;
+}
+
+// ADDED: turning all digits OFF first prevents "ghosting" (faint leftovers on other digits).
+// Why: because segments are shared, if two digits are enabled even briefly, you can “leak” patterns across digits.
+static inline void turnAllDigitsOff() {
+    for (int displayIndex = 0; displayIndex < 6; displayIndex++) {
+        digitalWrite(digitPins[displayIndex], DIGIT_ELECTRICALLY_OFF);
+    }
+}
+
+// ADDED: this is the actual number we want to show in the real project.
+// Bigger picture: the networking file updates this variable, and the display system continuously refreshes it.
+static volatile long currentNumberFromNetwork = 0;
+
+// ADDED: this is the number we are *currently committed to showing* on the display.
+// Why: your spec says only update the displayed number every 30 seconds if it changed.
+static long lastCommittedDisplayedNumber = -1;
+
+// ADDED: used to measure the "30 seconds" window without blocking the display.
+// Why: we can’t use delay(30000) because multiplexing must run constantly or the display flickers/goes dark.
+static unsigned long last30SecondCheckTimeMs = 0;
+
+// ADDED: holds the 6 individual digits we want to show (one value per display position).
+// Bigger picture: we split the full number into digits once, then the multiplex refresh uses this buffer quickly.
+static uint8_t sixDigitDisplayBuffer[6] = {0,0,0,0,0,0};
+
+// ADDED: convert a whole number into 6 digits.
+// Why: multiplexing needs *per-digit* values (each display shows only one digit at a time).
+static inline void splitNumberIntoSixDigits(long valueToShow) {
+    // For now, negative values just clamp to 0 so the buffer always makes sense.
+    if (valueToShow < 0) valueToShow = 0;
+
+    // We fill from right-to-left: last display shows the “ones” digit, then tens, hundreds, etc.
+    // This produces leading zeros on the left (ex: 123 -> 000123).
+    for (int position = 5; position >= 0; position--) {
+        sixDigitDisplayBuffer[position] = (uint8_t)(valueToShow % 10);
+        valueToShow /= 10;
+    }
+}
+
+// ADDED: multiplex refresh step.
+// Bigger picture: all 6 displays share the same segment pins, so we can only show ONE digit “for real” at a time.
+// If we switch fast enough (hundreds of times per second), your eyes blend it into a stable 6-digit display.
+static inline void refreshOneDigitOfSix() {
+    // Which digit are we refreshing this time?
+    // Why static: we want this to persist between function calls without being global “project clutter.”
+    static uint8_t activeDisplayIndex = 0;
+
+    // Timing control in microseconds.
+    // Why micros(): multiplexing needs fine timing; millis() is too coarse for flicker-free control.
+    static unsigned long lastRefreshTimeUs = 0;
+
+    const unsigned long nowUs = micros();
+    const unsigned long perDigitHoldTimeUs = 1200UL; // adjust brightness/flicker tradeoff
+
+    // Why early-return: keeps loop() very fast and non-blocking, while still refreshing at a stable rate.
+    if (nowUs - lastRefreshTimeUs < perDigitHoldTimeUs) return;
+    lastRefreshTimeUs = nowUs;
+
+    // Step 1: disable all digits so we don't briefly show the new segments on the old digit ("ghosting").
+    turnAllDigitsOff();
+
+    // Step 2: write the segments for the digit we want to show on this specific display.
+    displayDigit(sixDigitDisplayBuffer[activeDisplayIndex]);
+
+    // Step 3: enable the one display we want visible for this moment in time.
+    digitalWrite(digitPins[activeDisplayIndex], DIGIT_ELECTRICALLY_ON);
+
+    // Step 4: move to the next display position for the next refresh “slice”.
+    activeDisplayIndex = (uint8_t)((activeDisplayIndex + 1) % 6);
+}
+
+void setup()  
+{
+    for (int i = 0; i < 7; i++) {
+        pinMode(segPins[i], OUTPUT);
+        digitalWrite(segPins[i], HIGH); // segments OFF initially (common anode)
+    }
+
+  // digit pins
+    for (int i = 0; i < 6; i++) {
+        pinMode(digitPins[i], OUTPUT);
+        digitalWrite(digitPins[i], HIGH);  // digits OFF initially (common anode)
+    }
+
+    // Start in a known safe state (no random digit enabled).
+    turnAllDigitsOff();
+
+    // Start showing 0 until the network layer provides something.
+    splitNumberIntoSixDigits(0);
+}
+
+// ADDED: loop stays “simple” but it never stops refreshing the display.
+// Why: multiplexing is not “set it once and forget it”; it requires constant refresh forever.
+void loop() {
+
+    // ADDED: placeholder "receive number from network" (separate file)
+    // - Does NOT implement real networking here
+    // - Just shows how this file will reference the networking portion
+    long newlyReceivedNetworkNumber = 0;
+
+    // Bigger picture: the networking module decides when there is a new number available.
+    // This file does not care how it was fetched (WiFi/HTTP/etc). It only consumes the latest value.
+    if (Cyphy_TryReceiveNumber(newlyReceivedNetworkNumber)) {
+        currentNumberFromNetwork = newlyReceivedNetworkNumber;
+    }
+
+    // If after 30s number has changed, update. Otherwise wait another 30s
+    const unsigned long nowMs = millis();
+
+    // Why millis() here: the 30-second rule is "human time", not microsecond timing.
+    // Using millis() is stable, easy, and does not block the display refresh.
+    if (nowMs - last30SecondCheckTimeMs >= 30000UL) {
+        last30SecondCheckTimeMs = nowMs;
+
+        // Only commit a new display buffer if the network value has changed.
+        // This matches your requirement and also avoids re-splitting digits constantly.
+        if (currentNumberFromNetwork != lastCommittedDisplayedNumber) {
+            lastCommittedDisplayedNumber = currentNumberFromNetwork;
+            splitNumberIntoSixDigits(lastCommittedDisplayedNumber);
+        }
+    }
+
+    // Always refresh the display (this is what keeps it visibly “on”).
+    refreshOneDigitOfSix();
+}
+```

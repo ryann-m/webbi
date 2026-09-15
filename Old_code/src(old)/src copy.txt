@@ -1,0 +1,153 @@
+#include <Arduino.h>
+
+// =========================
+// SEGMENT GPIO PINS
+// =========================
+
+const int segA = 18;
+const int segB = 19;
+const int segC = 21;
+const int segD = 22;
+const int segE = 23;
+const int segF = 25;
+const int segG = 26;
+
+// =========================
+// DIGIT ENABLE PINS
+// =========================
+
+const int digit1 = 32;
+const int digit2 = 33;
+const int digit3 = 27;
+
+// =========================
+// DIGIT SEGMENT MAP
+// A B C D E F G
+// =========================
+
+bool digits[10][7] = {
+
+  {1,1,1,1,1,1,0}, // 0
+  {0,1,1,0,0,0,0}, // 1
+  {1,1,0,1,1,0,1}, // 2
+  {1,1,1,1,0,0,1}, // 3
+  {0,1,1,0,0,1,1}, // 4
+  {1,0,1,1,0,1,1}, // 5
+  {1,0,1,1,1,1,1}, // 6
+  {1,1,1,0,0,0,0}, // 7
+  {1,1,1,1,1,1,1}, // 8
+  {1,1,1,1,0,1,1}  // 9
+};
+
+// =========================
+// CLEAR SEGMENTS
+// =========================
+
+void clearSegments() {
+
+  digitalWrite(segA, LOW);
+  digitalWrite(segB, LOW);
+  digitalWrite(segC, LOW);
+  digitalWrite(segD, LOW);
+  digitalWrite(segE, LOW);
+  digitalWrite(segF, LOW);
+  digitalWrite(segG, LOW);
+}
+
+// =========================
+// SET SEGMENTS
+// =========================
+
+void setSegments(int number) {
+
+  digitalWrite(segA, digits[number][0]);
+  digitalWrite(segB, digits[number][1]);
+  digitalWrite(segC, digits[number][2]);
+  digitalWrite(segD, digits[number][3]);
+  digitalWrite(segE, digits[number][4]);
+  digitalWrite(segF, digits[number][5]);
+  digitalWrite(segG, digits[number][6]);
+}
+
+// =========================
+// SETUP
+// =========================
+
+void setup() {
+
+  pinMode(segA, OUTPUT);
+  pinMode(segB, OUTPUT);
+  pinMode(segC, OUTPUT);
+  pinMode(segD, OUTPUT);
+  pinMode(segE, OUTPUT);
+  pinMode(segF, OUTPUT);
+  pinMode(segG, OUTPUT);
+
+  pinMode(digit1, OUTPUT);
+  pinMode(digit2, OUTPUT);
+  pinMode(digit3, OUTPUT);
+
+  clearSegments();
+}
+
+// =========================
+// MAIN LOOP
+// =========================
+
+void loop() {
+
+  int n = 123;
+
+  int hundreds = n / 100;
+  int tens = (n / 10) % 10;
+  int ones = n % 10;
+
+  // =====================
+  // DISPLAY 1
+  // =====================
+
+  digitalWrite(digit2, LOW);
+  digitalWrite(digit3, LOW);
+
+  setSegments(hundreds);
+
+  digitalWrite(digit1, HIGH);
+
+  delay(3);
+
+  digitalWrite(digit1, LOW);
+
+  // =====================
+  // DISPLAY 2
+  // =====================
+
+  clearSegments();
+
+  digitalWrite(digit1, LOW);
+  digitalWrite(digit3, LOW);
+
+  setSegments(tens);
+
+  digitalWrite(digit2, HIGH);
+
+  delay(3);
+
+  digitalWrite(digit2, LOW);
+
+  // =====================
+  // DISPLAY 3
+  // =====================
+
+  clearSegments();
+
+  digitalWrite(digit1, LOW);
+  digitalWrite(digit2, LOW);
+
+  setSegments(ones);
+
+  digitalWrite(digit3, HIGH);
+
+  delay(3);
+
+  digitalWrite(digit3, LOW);
+}

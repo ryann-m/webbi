@@ -1,0 +1,29 @@
+#include <Arduino.h>
+
+const int segA = 18;
+const int segB = 19;
+
+const int digit1 = 32;
+const int digit2 = 33;
+
+void setup() {
+  pinMode(segA, OUTPUT);
+  pinMode(segB, OUTPUT);
+
+  pinMode(digit1, OUTPUT);
+  pinMode(digit2, OUTPUT);
+
+  // Turn segments ON
+  digitalWrite(segA, HIGH);
+  digitalWrite(segB, HIGH);
+
+  // PNP logic:
+  // LOW = digit ON
+  // HIGH = digit OFF
+
+  digitalWrite(digit1, LOW);   // Display 1 ON
+  digitalWrite(digit2, HIGH);  // Display 2 OFF
+}
+
+void loop() {
+}

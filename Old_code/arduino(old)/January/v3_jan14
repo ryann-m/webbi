@@ -1,0 +1,73 @@
+// Segment pins: A B C D E F G
+int segPins[7] = {23, 22, 21, 19, 18, 17, 16};
+
+// Digit pins: DIG1 DIG2 DIG3 DIG4
+int digPins[4] = {25, 26, 27, 14};
+
+void setup() {
+  for (int i = 0; i < 7; i++) pinMode(segPins[i], OUTPUT);
+  for (int i = 0; i < 4; i++) pinMode(digPins[i], OUTPUT);
+
+  // enable only digit 1 (common anode: HIGH = ON)
+  digitalWrite(digPins[0], HIGH);
+  digitalWrite(digPins[1], LOW);
+  digitalWrite(digPins[2], LOW);
+  digitalWrite(digPins[3], LOW);
+}
+
+void allSegmentsOff() {
+  for (int i = 0; i < 7; i++)
+    digitalWrite(segPins[i], HIGH);
+}
+
+void segmentOn(int s) {
+  digitalWrite(segPins[s], LOW);
+}
+
+void show1() {
+  allSegmentsOff();
+  segmentOn(1); // B
+  segmentOn(2); // C
+}
+
+void show2() {
+  allSegmentsOff();
+  segmentOn(0); // A
+  segmentOn(1); // B
+  segmentOn(3); // D
+  segmentOn(4); // E
+  segmentOn(6); // G
+}
+
+void show3() {
+  allSegmentsOff();
+  segmentOn(0); // A
+  segmentOn(1); // B
+  segmentOn(2); // C
+  segmentOn(3); // D
+  segmentOn(6); // G
+}
+
+void show4() {
+  allSegmentsOff();
+  segmentOn(1); // B
+  segmentOn(2); // C
+  segmentOn(5); // F
+  segmentOn(6); // G
+}
+
+void loop() {
+
+  digitalWrite(digPins[0], HIGH);
+  show1();
+  
+  digitalWrite(digPins[1], HIGH);
+  show2();
+  
+  digitalWrite(digPins[2], HIGH);
+  show3();
+  
+  digitalWrite(digPins[3], HIGH);
+  show4();
+
+}

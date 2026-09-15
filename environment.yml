@@ -1,0 +1,16 @@
+name: webbi_env
+
+channels:
+    - defaults 
+    - conda-forge
+dependencies: 
+  - cmake
+  - make
+  - python=3.11 
+  - pip
+  - nodejs
+  - npm
+
+#  - arduino-cli
+#  - arduino-esp32
+   

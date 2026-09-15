@@ -1,0 +1,46 @@
+#include <Arduino.h>
+
+// === DIGIT SELECT (PNP - LOW = ON) ===
+const int DIGIT1_PIN = 32;
+const int DIGIT2_PIN = 33;
+
+// === SEGMENTS (NPN - HIGH = ON, shared by both displays) ===
+const int SEG_A = 18;
+const int SEG_B = 19;
+const int SEG_C = 21;
+const int SEG_D = 22;
+const int SEG_E = 23;
+const int SEG_F = 25;
+const int SEG_G = 26;
+
+const int segPins[7] = {SEG_A, SEG_B, SEG_C, SEG_D, SEG_E, SEG_F, SEG_G};
+
+void allSegmentsOff() {
+  for (int i = 0; i < 7; i++) {
+    digitalWrite(segPins[i], LOW);
+  }
+}
+
+void setup() {
+  pinMode(DIGIT1_PIN, OUTPUT);
+  pinMode(DIGIT2_PIN, OUTPUT);
+  for (int i = 0; i < 7; i++) {
+    pinMode(segPins[i], OUTPUT);
+  }
+
+  // Everything OFF to start
+  digitalWrite(DIGIT1_PIN, HIGH);  // PNP OFF
+  digitalWrite(DIGIT2_PIN, HIGH);  // PNP OFF
+  allSegmentsOff();
+
+  delay(500);
+
+  // Test: turn ON segment A on both displays simultaneously
+  digitalWrite(DIGIT1_PIN, LOW);   // PNP ON - digit 1 enabled
+  digitalWrite(DIGIT2_PIN, LOW);   // PNP ON - digit 2 enabled
+  digitalWrite(SEG_A, HIGH);       // segment A ON
+}
+
+void loop() {
+  // Nothing needed - stays on
+}

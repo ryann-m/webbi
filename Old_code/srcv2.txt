@@ -1,0 +1,140 @@
+/*
+ * Webbi - Phase 1 Display Only
+ * Author: Ryann Mack
+ *
+ * Displays a 6-digit number with leading zeros on multiplexed common-anode displays.
+ * LOW = ON for both segment pins and digit control pins.
+ * Change n to display any number from 0 to 999999.
+ */
+
+#include <Arduino.h>
+
+// --- Number to display ---
+long n = 888888;
+
+// --- Pin assignments ---
+int segPins[7] = { 18, 19, 21, 22, 23, 25, 26 }; // A, B, C, D, E, F, G
+int digPins[6] = { 4, 14, 17, 27, 32, 33 };      // D1 through D6
+
+// --- Segment patterns for digits 0-9 ---
+// Each row is one digit. Columns are segments A B C D E F G.
+// 1 = segment ON, 0 = segment OFF.
+//
+//   AAA
+//  F   B
+//   GGG
+//  E   C
+//   DDD
+//
+int segPatterns[10][7] = {
+  // A  B  C  D  E  F  G
+  {  1, 1, 1, 1, 1, 1, 0 },  // 0
+  {  0, 1, 1, 0, 0, 0, 0 },  // 1
+  {  1, 1, 0, 1, 1, 0, 1 },  // 2
+  {  1, 1, 1, 1, 0, 0, 1 },  // 3
+  {  0, 1, 1, 0, 0, 1, 1 },  // 4
+  {  1, 0, 1, 1, 0, 1, 1 },  // 5
+  {  1, 0, 1, 1, 1, 1, 1 },  // 6
+  {  1, 1, 1, 0, 0, 0, 0 },  // 7
+  {  1, 1, 1, 1, 1, 1, 1 },  // 8
+  {  1, 1, 1, 1, 0, 1, 1 },  // 9
+};
+
+// --- Display buffer ---
+// displayBuffer[0] = leftmost digit, displayBuffer[5] = rightmost (ones place)
+int displayBuffer[6] = { 0, 0, 0, 0, 0, 0 };
+
+// --- Turn off all digit control lines ---
+// Call this before changing segment lines to prevent ghosting
+void turnAllDigitsOff() {
+  for (int i = 0; i < 6; i++) {
+    digitalWrite(digPins[i], LOW); // LOW = digit OFF
+  }
+}
+
+// --- Write segment pattern for one digit value (0-9) ---
+// Does NOT enable any digit. Call this between turnAllDigitsOff() and enableDigit().
+void setSegmentsForDigit(int digit) {
+  if (digit < 0 || digit > 9) digit = 0; // safety clamp
+  for (int seg = 0; seg < 7; seg++) {
+    // segPatterns[digit][seg] == 1 means this segment should be ON
+    // LOW = ON in this hardware setup
+    if (segPatterns[digit][seg] == 1) {
+      digitalWrite(segPins[seg], LOW);
+    } else {
+      digitalWrite(segPins[seg], HIGH);
+    }
+  }
+}
+
+// --- Split a number into 6 digits and store in displayBuffer ---
+// Example: n=42 -> { 0, 0, 0, 0, 4, 2 }
+void setNumber(long num) {
+  if (num < 0)      num = 0;
+  if (num > 999999) num = 999999;
+  // Fill from right (ones place) to left
+  for (int pos = 5; pos >= 0; pos--) {
+    displayBuffer[pos] = (int)(num % 10);
+    num /= 10;
+  }
+}
+
+// --- Refresh one digit per call (non-blocking multiplexing) ---
+// Call this in loop() as fast as possible — do not put delays in loop().
+// Each digit stays on for HOLD_TIME_US microseconds, then the next one takes over.
+// At 1500us per digit x 6 digits = 9ms per full cycle = ~111Hz refresh rate.
+  static int currentDigit = 0;
+  static unsigned long lastSwitch = 0;
+
+  const unsigned long HOLD_TIME_US = 30000;
+
+void refreshDisplay() {
+
+
+  if (micros() - lastSwitch < HOLD_TIME_US) {
+    return; // not time to switch yet
+  }
+  lastSwitch = micros();
+
+  // 1. Disable all digits first (prevents ghosting)
+  turnAllDigitsOff();
+
+  // 2. Set segment pattern for this digit position
+  setSegmentsForDigit(displayBuffer[currentDigit]);
+
+  // 3. Enable only this digit
+  digitalWrite(digPins[currentDigit], HIGH); // HIGH = digit ON
+
+  // 4. Advance to next digit for next call
+  currentDigit = (currentDigit + 1) % 6;
+}
+
+// --- Setup ---
+void setup() {
+  Serial.begin(115200);
+
+  // Set all segment pins as outputs, default OFF
+  for (int i = 0; i < 7; i++) {
+    pinMode(segPins[i], OUTPUT);
+    digitalWrite(segPins[i], HIGH); // HIGH = segment OFF
+  }
+
+  // Set all digit pins as outputs, default OFF
+  for (int i = 0; i < 6; i++) {
+    pinMode(digPins[i], OUTPUT);
+    digitalWrite(digPins[i], HIGH); // HIGH = digit OFF
+  }
+
+  // Load the number into the display buffer
+  setNumber(n);
+
+  Serial.print("Displaying: ");
+  Serial.println(n);
+}
+
+// --- Loop ---
+void loop() {
+  // Phase 2 will update n from the network here, then call setNumber(n).
+  // For now, just keep refreshing the display.
+  refreshDisplay();
+}

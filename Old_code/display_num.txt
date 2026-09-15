@@ -1,0 +1,98 @@
+/*
+Author: Ryann Mack
+
+Date: January 30th, 2026
+
+Notes:
+- Common Anode (High On, Low off I think)
+
+Description:
+- Recieves the number from the request
+- (numbers function)Instantiates each number of 7 seg
+- Easy to display number from the "numbers function"
+- If after 30s number has changed, update. Otherwise wait another 30s
+*/
+
+// Libraries
+#include <stdlib.h>
+#include <cstddef>  // Add this for std::byte
+#include <Arduino.h>
+
+
+// Initialization
+    // Initialize segPins for each segment (A B C D E F G)
+    // Initialize digPins for each display (1 2 3 4 5 6)
+
+// Setup (change pin associations if needed)
+// Segment pins: A B C D E F G
+int segPins[7] = {18, 19, 21, 22, 23, 25, 26};
+
+// Digit pins: D1 D2 D3 D4 D5 D6
+int digitPins[6] = {4, 5, 12, 13, 14, 27};
+
+
+//HOW DO I PROPERLY SET THE STUFF UP AND HOW DO I PROPERLY INITIALIZE WITH ESP32:
+
+// TOS-11060BE-B:
+    // Common Anode
+    // 4v per segment (2x 2v Red Led's)
+void setup()  {
+    for (int i = 0; i < 7; i++) {
+        pinMode(segPins[i], OUTPUT);
+        digitalWrite(segPins[i], HIGH); // segments OFF initially (common anode)
+    }
+
+
+  // digit pins
+    for (int i = 0; i < 6; i++) {
+        pinMode(digitPins[i], OUTPUT);
+        digitalWrite(digitPins[i], HIGH);  // digits OFF initially (common anode)
+    }
+
+}   
+// Function that displays numbers on webbi
+//void createDigit(){
+    // Defines each digit based on the segments that light up to make it
+    // Should I make a function for each digit? Or can I do that in here?
+//}
+std::byte numbers[10][7] = {
+    // A B C D E F G
+    {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{1}}, // 0
+    {std::byte{1}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{1}, std::byte{1}, std::byte{1}}, // 1
+    {std::byte{0}, std::byte{0}, std::byte{1}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{0}}, // 2
+    {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{1}, std::byte{0}}, // 3
+    {std::byte{1}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{1}, std::byte{0}, std::byte{0}}, // 4
+    {std::byte{0}, std::byte{1}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{0}, std::byte{0}}, // 5
+    {std::byte{0}, std::byte{1}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}}, // 6
+    {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{1}, std::byte{1}, std::byte{1}}, // 7
+    {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}}, // 8
+    {std::byte{0}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{1}, std::byte{0}, std::byte{0}}  // 9
+};
+
+int displayDigit(int n) {
+    // Recieves a number n, and if the n matches a segment in position i, it outputs that segment
+    // to the position (123, for number 1, find which segments display that number based on the funcitons
+    // for creating numbers, (There has to be a match) and sets that as the new array of numbers to be displayed)
+      for (int i = 0; i < 6; i++) {
+        digitalWrite(digitPins[i], HIGH); // Turn off all digits (common anode)
+    }
+    for (int i = 0; i < 6; i++) {
+        if (i == 0) {
+            digitalWrite(digitPins[i], LOW); // Turn on the first digit (common anode)
+        } else {
+            digitalWrite(digitPins[i], HIGH); // Keep other digits off
+        }
+    }
+        for (int i = 0; i < 7; i++) {
+            digitalWrite(segPins[i], numbers[n][i] ? LOW : HIGH); // LOW to turn ON segment (common anode)
+        }
+}
+
+
+/*int requestCount(int count){
+    // Asks for the status of the count of visitors
+    // returns the current count (to be used in display digit?)
+    // Asks every 30 seconds (?)
+    
+}
+*/

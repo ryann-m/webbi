@@ -1,0 +1,12 @@
+/*
+Author: Ryann Mack
+
+Date: January 30th, 2026
+
+Description:
+- Sends a request via TCP (secure, don't care about speed)
+    - Asks for the website count number from CyPhy Life
+    - idk how to do this help :,)
+*/
+
+// Use mqtt to get the info from colossus
